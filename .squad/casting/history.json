@@ -1,0 +1,22 @@
+{
+  "universe_usage_history": [
+    {
+      "universe": "GI Joe",
+      "used_at": "2026-04-20T18:52:00Z",
+      "repo": "microsoft/powertoys"
+    }
+  ],
+  "assignment_cast_snapshots": {
+    "cmdpal-2026-04-20": {
+      "assignment_id": "cmdpal-2026-04-20",
+      "universe": "GI Joe",
+      "created_at": "2026-04-20T18:52:00Z",
+      "agents": {
+        "hawk": { "role": "Lead", "character": "Hawk" },
+        "scarlett": { "role": "UI Dev", "character": "Scarlett" },
+        "snake-eyes": { "role": "Extensions Dev", "character": "Snake Eyes" },
+        "flint": { "role": "Tester", "character": "Flint" }
+      }
+    }
+  }
+}

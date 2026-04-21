@@ -1,0 +1,32 @@
+{
+  "agents": {
+    "hawk": {
+      "persistent_name": "Hawk",
+      "universe": "GI Joe",
+      "created_at": "2026-04-20T18:52:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "scarlett": {
+      "persistent_name": "Scarlett",
+      "universe": "GI Joe",
+      "created_at": "2026-04-20T18:52:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "snake-eyes": {
+      "persistent_name": "Snake Eyes",
+      "universe": "GI Joe",
+      "created_at": "2026-04-20T18:52:00Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "flint": {
+      "persistent_name": "Flint",
+      "universe": "GI Joe",
+      "created_at": "2026-04-20T18:52:00Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
