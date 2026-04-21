@@ -153,3 +153,83 @@ Shared Libraries (ManagedCommon, logger, SettingsAPI, telemetry)
 - No other pluralization bugs found in ViewModels layer
 
 **Verdict:** ✅ APPROVE — Code is correct, follows existing patterns, comprehensive tests, no style violations.
+
+### 2026-04-21: Issue #46634 Analysis — Hide app descriptions in Command Palette
+
+**Issue:** #46634 — CmdPal: Hide descriptions for listed applications  
+**Status:** Analysis only (no code changes)
+
+**Investigation Summary:**
+
+✅ **List Item Subtitle Field:**
+- Defined in Extension SDK IDL: `IListItem` requires `ICommandItem`, which has a `String Subtitle { get; }` property
+- Subtitles populated in `AppListItem` ctor from `AppItem.Subtitle` (line 94 of AppListItem.cs)
+- UWP apps: Description from manifest (UWPApplication.ToAppItem, line 364)
+- Win32 apps: Description from FileVersionInfo (Win32Program.ToAppItem, line 1086)
+- Extensions can freely set Subtitle to empty string; UI gracefully renders nothing
+
+✅ **Settings Infrastructure:**
+- AllAppsSettings extends `JsonSettingsManager` (from Extension SDK Toolkit)
+- Settings stored in JSON at `%APPDATA%/Microsoft.CmdPal/apps.settings.json`
+- Pattern uses `ToggleSetting` (boolean) or `ChoiceSetSetting` (dropdown)
+- Each setting auto-generates UI card (Adaptive Cards) — no manual UI work needed
+- Settings are namespaced: `Namespaced(nameof(PropertyName))` → `apps.{PropertyName}`
+
+✅ **Existing Toggle Patterns:**
+- `EnableStartMenuSource`, `EnableDesktopSource`: Both use ToggleSetting pattern
+- Resource strings follow naming convention: `enable_start_menu_source` (label), description
+- Settings constructor registers each setting: `Settings.Add(_field)`
+
+✅ **Fallback Behavior:**
+- Mentioned in issue ("app list and fallback") refers to SearchResultLimit setting
+- Already applies uniformly to both main results and fallback set
+- No special handling needed for new hide-descriptions setting
+
+**Proposed Solution:**
+1. Add `ToggleSetting _hideAppDescriptions` field to AllAppsSettings (default: false)
+2. Add public `HideAppDescriptions` property
+3. Add resource strings: `hide_app_descriptions`, `hide_app_descriptions_description`
+4. In AllAppsPage.BuildListItems() or GetPrograms(): conditionally clear Subtitle if setting enabled
+5. Unit tests: verify setting persists and toggles correctly
+
+**Files to Modify:**
+1. `src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.Apps/AllAppsSettings.cs` — add ToggleSetting field + property + register
+2. `src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.Apps/Properties/Resources.resx` — add 2 strings
+3. `src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.Apps/AllAppsPage.cs` — conditionally clear subtitle in BuildListItems()
+4. Unit tests (if applicable): `AllAppsSettingsTests.cs` or similar
+
+**Risks:** None. Default false = backward compatible. No migration needed (JsonSettingsManager handles new settings gracefully). Negligible perf impact (one bool check during list build).
+
+**Pattern Confidence:** ✅ High. Mirrors existing `EnableStartMenuSource` pattern exactly.
+
+### 2026-04-21: Code Review — Tag Overflow Fix (Issue #38317)
+
+**Branch:** `agents/issue-38317-preparation`
+**Issue:** #38317 — Too many tags on a list item pushes/truncates title text
+
+**Files Reviewed:**
+1. `src/modules/cmdpal/Microsoft.CmdPal.UI.ViewModels/ListItemViewModel.cs` — ViewModel capping logic
+2. `src/modules/cmdpal/Microsoft.CmdPal.UI/ExtViews/ListPage.xaml` — XAML template with overflow badge
+
+**Key Findings:**
+
+✅ **Contract stability:** Original `Tags` and `HasTags` properties preserved. New additive properties (`VisibleTags`, `OverflowTagCount`, `HasOverflowTags`, `OverflowTagText`). `DetailsTagsViewModel` on ShellPage is a completely separate class — unaffected.
+
+✅ **MVVM separation:** Capping logic lives entirely in `ListItemViewModel.UpdateVisibleTags()`. No code-behind. XAML binds to computed properties only.
+
+✅ **Theme resource reuse:** Overflow badge correctly reuses `TagPadding`, `TagBackground`, `TagBorderBrush`, `TagBorderThickness`, `TagForeground`, `ControlCornerRadius` from Tag.xaml resource dictionary. `FontSize="12"` matches TagTemplate's Tag control.
+
+✅ **Edge cases handled:** null→no-op, 0→hidden, 1-3→no badge, 4+→first 3 + "+N" badge.
+
+✅ **Accessibility:** `AutomationProperties.Name` set on overflow border. Noted improvement opportunity: "+3" is less descriptive than "+3 more tags" for screen readers.
+
+✅ **Performance:** `Take(3).ToList()` is O(3) constant. Called only on tag change events, not hot paths.
+
+**Layout note:** The outer Grid uses `Width="*"` for title, `Width="Auto"` for tags. WinUI measures Auto first, so tags technically get layout priority. With the cap at 3, the Auto column is bounded and the title gets adequate space. True layout priority inversion would require column definition changes — higher risk, lower reward given the cap.
+
+**Verdict:** 🔄 APPROVED WITH SUGGESTIONS — ship it, follow up on accessible name improvement.
+
+**Patterns Documented:**
+- Tag overflow pattern: ViewModel caps + derived properties, XAML binds `VisibleTags` + conditional overflow badge
+- ListPage.xaml Grid layout: Col 0=28px icon, Col 1=* title/subtitle, Col 2=Auto tags
+- Tag theme resources defined in `Controls/Tag.xaml` — reusable for any tag-like element
