@@ -173,3 +173,45 @@
 6. **Dock Implementation** — DockViewModel logic is complex; EditMode state transitions need careful handling
 7. **Error Handling** — GlobalErrorHandler exists but pattern is inconsistent across VMs
 8. **Testing Gaps** — UI is not directly testable (WinUI + platform specific); ViewModels are testable but integration needs work
+
+### Pluralization Patterns (2026-04-21)
+
+**Issue #47110 - Extensions settings plural/singular forms**
+
+**Problem:** Extensions page showed "1 commands" and "1 fallback commands" instead of using singular forms when count is 1.
+
+**Solution Pattern:**
+- Create multiple resource strings in `Properties/Resources.resx` for each singular/plural combination
+- Use pattern switch expression in ViewModel to select the correct format based on count
+- For dual counts (commands + fallback commands), use tuple pattern matching: `(commandSingular, fallbackSingular) switch`
+
+**Key Files:**
+- `Microsoft.CmdPal.UI.ViewModels\Properties\Resources.resx` — Resource strings for localization
+- `Microsoft.CmdPal.UI.ViewModels\ProviderSettingsViewModel.cs` — Extension settings ViewModel that formats the subtext
+
+**Pattern Example:**
+```csharp
+// Create static CompositeFormat instances for each variant
+private static readonly CompositeFormat FormatSingular = CompositeFormat.Parse(Resources.resource_singular);
+private static readonly CompositeFormat FormatPlural = CompositeFormat.Parse(Resources.resource_plural);
+
+// Select format based on count
+CompositeFormat format = count == 1 ? FormatSingular : FormatPlural;
+return string.Format(CultureInfo.CurrentCulture, format, name, count);
+```
+
+**Dual-count pattern matching:**
+```csharp
+bool commandSingular = commandCount == 1;
+bool fallbackSingular = fallbackCount == 1;
+
+CompositeFormat format = (commandSingular, fallbackSingular) switch
+{
+    (true, true) => BothSingularFormat,
+    (true, false) => CommandSingularFormat,
+    (false, true) => FallbackSingularFormat,
+    (false, false) => BothPluralFormat,
+};
+```
+
+**Decision:** CmdPal does not use a pluralization library or framework. Each pluralization case requires explicit resource strings and conditional logic. This ensures full control over localization and avoids runtime dependencies.

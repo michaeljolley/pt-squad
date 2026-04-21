@@ -77,3 +77,69 @@
 - Output path: `$(SolutionDir)$(Platform)\$(Configuration)\WinUI3Apps\CmdPal\tests\`
 - All test projects reference `Microsoft.CmdPal.Ext.UnitTestBase` (except Common)
 - Moq & MSTest are consistent dependencies across all test projects
+
+### Issue #47110 — Pluralization Tests (2026-04-20)
+
+**Context:**
+- Issue: CmdPal settings → Extensions page shows "1 commands" / "1 fallback commands" instead of singular form
+- Source: `Microsoft.CmdPal.UI.ViewModels\ProviderSettingsViewModel.cs`, `ExtensionSubtext` property (lines 54-87)
+- Resource strings: `Microsoft.CmdPal.UI.ViewModels\Properties\Resources.resx` (lines 132-159)
+- Format strings used:
+  - `builtin_extension_subtext` — "{0}, {1} commands" (plural)
+  - `builtin_extension_subtext_singular` — "{0}, {1} command" (singular)
+  - `builtin_extension_subtext_with_fallback` — "{0}, {1} commands, {2} fallback commands" (both plural)
+  - `builtin_extension_subtext_with_fallback_singular_command` — "{0}, {1} command, {2} fallback commands"
+  - `builtin_extension_subtext_with_fallback_singular_fallback` — "{0}, {1} commands, {2} fallback command"
+  - `builtin_extension_subtext_with_fallback_singular_both` — "{0}, {1} command, {2} fallback command"
+
+**Implementation Notes:**
+- Pluralization logic uses pattern matching on (commandSingular, fallbackSingular) tuple (line 71)
+- CompositeFormat.Parse used for resource string formatting (lines 20-26)
+- Enabled/disabled state affects display (lines 58-61); disabled providers don't show command counts
+- Extension name comes from IExtensionWrapper.ExtensionDisplayName or falls back to Resources.builtin_extension_name
+
+**Test Coverage Added:**
+- Created: `src/modules/cmdpal/Tests/Microsoft.CmdPal.UI.ViewModels.UnitTests/ProviderSettingsViewModelPluralizationTests.cs`
+- Test class name: `ProviderSettingsViewModelPluralizationTests`
+- Test methods: 17 total
+  - Zero commands → plural (0 commands)
+  - One command → singular (1 command)
+  - Two commands → plural (2 commands)
+  - Five commands → plural (5 commands)
+  - One fallback → singular (1 fallback command)
+  - Two fallback → plural (2 fallback commands)
+  - One command + one fallback → both singular
+  - One command + multiple fallback → mixed
+  - Multiple commands + one fallback → mixed
+  - Multiple commands + multiple fallback → both plural
+  - Large counts (100 commands)
+  - Disabled provider → no command counts shown
+  - Built-in provider (without extension wrapper)
+  - Zero fallback → doesn't mention "fallback"
+  - Extension name included in subtext
+
+**Mock Strategy:**
+- Mock ISettingsService using Moq
+- Create test CommandProvider class (partial, CsWinRT1028 compliant)
+- Create test AppExtensionWrapper (partial)
+- Use real ProviderSettings with test data
+- Construct CommandProviderWrapper with specified top-level and fallback item counts
+
+**Key Test Helpers:**
+- `CreateProvider(displayName, topLevelCommandCount, fallbackCommandCount, extension)` — Factory for CommandProviderWrapper
+- `CreateViewModel(provider, isEnabled)` — Factory for ProviderSettingsViewModel with mocked settings service
+
+**Dependencies:**
+- System.Collections.Immutable (for ImmutableDictionary)
+- Microsoft.CmdPal.Common.Services (ISettingsService)
+- Microsoft.CmdPal.UI.ViewModels.Models (ExtensionService types)
+- Microsoft.CmdPal.UI.ViewModels.Services (CommandProviderWrapper, ProviderSettings)
+- Microsoft.CommandPalette.Extensions (IExtensionWrapper, IListPageNavigator)
+- Microsoft.CommandPalette.Extensions.Toolkit (CommandProvider, FallbackCommandItem)
+- Moq (mocking framework)
+
+**Test Pattern:**
+- Arrange-Act-Assert structure
+- Descriptive test method names following convention: `ExtensionSubtext_{Scenario}_{ExpectedBehavior}`
+- Detailed assertion messages using string interpolation to aid debugging
+- Multiple assertions per test (positive + negative checks for singular/plural forms)

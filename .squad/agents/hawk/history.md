@@ -119,3 +119,37 @@ Shared Libraries (ManagedCommon, logger, SettingsAPI, telemetry)
 - Main App: `src/modules/cmdpal/Microsoft.CmdPal.UI/Program.cs`, `MainWindow.xaml.cs`
 - Tests: 16 projects under `src/modules/cmdpal/Tests/` (unit + UI tests with WinAppDriver)
 - Built-in Extensions: `src/modules/cmdpal/ext/` (Microsoft.CmdPal.Ext.Apps, .Calc, .Shell, etc.)
+
+### 2026-04-21: Code Review - Pluralization Fix (Issue #47110)
+
+**Branch:** `dev/mjolley/fix-cmdpal-plural-form`  
+**Issue:** #47110 — CmdPal uses plural form in settings ("1 commands" instead of "1 command")
+
+**Files Reviewed:**
+1. `src/modules/cmdpal/Microsoft.CmdPal.UI.ViewModels/ProviderSettingsViewModel.cs`
+2. `src/modules/cmdpal/Microsoft.CmdPal.UI.ViewModels/Properties/Resources.resx`
+3. `src/modules/cmdpal/Tests/Microsoft.CmdPal.UI.ViewModels.UnitTests/ProviderSettingsViewModelPluralizationTests.cs`
+
+**Findings:**
+
+✅ **Code correctness:** Tuple pattern matching covers all 4 combinations (singular/plural × command/fallback). Logic is sound.
+
+✅ **Edge case (count=0):** Uses plural form ("0 commands"), which is linguistically correct in English.
+
+✅ **Resource naming:** Consistent with existing conventions (`builtin_extension_subtext_*` pattern). Comments clearly indicate singular/plural cases.
+
+✅ **Pattern consistency:** Matches existing pluralization pattern in `DockBandSettingsViewModel.cs` (line 35-37), which uses ternary for singular/plural selection with separate resource strings.
+
+✅ **StyleCop/editorconfig compliance:** Indentation (4 spaces), formatting, naming conventions all correct per `src/.editorconfig`.
+
+✅ **Test coverage:** Comprehensive test suite covers all cases: 0 commands, 1 command, 2+ commands, fallback variants, disabled state, built-in providers. Test infrastructure matches existing patterns in other `*Tests.cs` files (Mock usage, helper methods, MSTest attributes).
+
+**Unrelated change noted:**
+- `Microsoft.CmdPal.UI.csproj` adds `<EventSourceSupport>true</EventSourceSupport>` — outside scope of pluralization fix, but appears to be for AOT build telemetry. Not a concern.
+
+**Pattern Analysis:**
+- CmdPal uses CompositeFormat with separate resource strings for singular/plural (not conditional formatting within a single string)
+- This is consistent across the codebase: DockBandSettingsViewModel, SettingsExtensionsViewModel both follow this pattern
+- No other pluralization bugs found in ViewModels layer
+
+**Verdict:** ✅ APPROVE — Code is correct, follows existing patterns, comprehensive tests, no style violations.
