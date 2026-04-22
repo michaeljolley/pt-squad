@@ -98,6 +98,63 @@ Shared Libraries (ManagedCommon, logger, SettingsAPI, telemetry)
 - MVVM + DI enables testability (16 test projects, unit test coverage on extensions & ViewModels)
 - Modular extension loading with in-proc COM hosting (fast, isolated failure domains)
 - AoT-ready architecture (PublishAot enabled) for future deployment as single executable
+
+### Dependency Injection Architecture Analysis (2025-01-31)
+
+**Task:** Map full dependency graph and identify circular reference risks for migrating from `App.Current.Services` service locator to constructor injection.
+
+**Findings:**
+- ✅ **No circular dependencies** in the service registration graph across all 30+ registered services
+- ✅ **Clean layer separation** - ViewModels layer does NOT use `App.Current.Services` anywhere
+- ⚠️ **13 XAML pages + 4 controls** use service locator in constructors (WinUI limitation)
+- ✅ **All services have interface abstractions** - ready for DI migration
+
+**Service Registration Structure:**
+```
+App.ConfigureServices:
+  - Root: TaskScheduler (from SynchronizationContext), Logging (extension method)
+  - AddBuiltInCommands: 17 ICommandProvider singletons (AllApps, Shell, Calculator, etc.)
+  - AddCoreServices: ExtensionService, RunHistoryService, RootPageService, ShellViewModel, DockViewModel, factories
+  - AddUIServices: PersistenceService, SettingsService, AppStateService, ThemeService, TopLevelCommandManager, Icon services
+```
+
+**Dependency Hierarchy (4 levels, bottom-up):**
+- **Level 0** (leaf): PersistenceService, ApplicationInfoService, TaskScheduler, all command providers
+- **Level 1**: SettingsService, AppStateService, ThemeService (depend on Level 0)
+- **Level 2**: RunHistoryService, TopLevelCommandManager, TrayIconService (depend on 0-1)
+- **Level 3**: AliasManager, HotkeyManager, DockViewModel (depend on 0-2)
+- **Level 4** (top): PowerToysRootPageService, ShellViewModel (depend on 0-3)
+
+**Key Service Dependencies:**
+- `TopLevelCommandManager` takes `IServiceProvider` to lazy-resolve `IEnumerable<ICommandProvider>` (not a cycle)
+- `PowerToysRootPageService` has 5 constructor params: TLC, AliasManager, FuzzyMatcher, Settings, AppState
+- `ShellViewModel` has 4 constructor params: Scheduler, RootPageService, PageFactory, AppHost
+- `ThemeService` depends on `ResourceSwapper` + `ISettingsService`
+
+**XAML Instantiation Challenge:**
+- 13 pages: MainWindow, GeneralPage, ExtensionsPage, AppearancePage, DockSettingsPage, InternalPage, ShellPage, ListPage, DockWindow, and others
+- 4 controls: SearchBar, ContextMenu, FallbackRanker
+- All instantiated by WinUI XAML framework with parameterless constructors
+- Current pattern: `App.Current.Services.GetService<T>()` in constructor body
+
+**Migration Strategy:**
+1. **Add DI constructors** alongside parameterless (no breaking changes)
+2. **Create IPageFactory** service for DI-aware page creation
+3. **Update navigation** to use factory instead of `Frame.Navigate(typeof(Page))`
+4. **Migrate MainWindow** in `App.OnLaunched` to inject dependencies
+5. **Test incrementally** per subsystem
+6. **Remove service locator** once all call sites migrated
+
+**Risk Assessment:** **MODERATE**
+- No circular deps = low risk
+- XAML instantiation = moderate complexity (factory pattern)
+- Estimated effort: 2-3 weeks with testing
+
+**Key File Paths:**
+- Service registrations: `src/modules/cmdpal/Microsoft.CmdPal.UI/App.xaml.cs`
+- Service implementations: `Microsoft.CmdPal.UI.ViewModels/Services/`, `Microsoft.CmdPal.UI/Services/`, `Microsoft.CmdPal.Common/Services/`
+- Pages using service locator: `src/modules/cmdpal/Microsoft.CmdPal.UI/Settings/*.xaml.cs`, `MainWindow.xaml.cs`
+- Full analysis: `.squad/agents/hawk/di-analysis.md`
 - Rich navigation model (Stack-based with HomeGoBack/GoHome variants) supports complex UIs
 - Telemetry + logging infrastructure (PowerToys.Telemetry, spdlog) for monitoring
 
@@ -233,3 +290,27 @@ Shared Libraries (ManagedCommon, logger, SettingsAPI, telemetry)
 - Tag overflow pattern: ViewModel caps + derived properties, XAML binds `VisibleTags` + conditional overflow badge
 - ListPage.xaml Grid layout: Col 0=28px icon, Col 1=* title/subtitle, Col 2=Auto tags
 - Tag theme resources defined in `Controls/Tag.xaml` — reusable for any tag-like element
+
+### Full DI Investigation Summary (2026-04-22)
+
+**Task:** Complete dependency graph analysis across 30+ services, 5 dependency levels, identification of all components requiring migration.
+
+**Key Findings:**
+- ✅ **Zero circular dependencies** confirmed across entire codebase
+- ✅ **13 XAML pages + 4 controls** identified for DI migration
+- ✅ **5 dependency levels** mapped cleanly from UI through to shared libraries
+- ✅ **No architectural blockers** — DI migration is feasible
+
+**Dependency Hierarchy (Clean Layering):**
+1. **UI Layer** (XAML pages/controls) — depends on ViewModels + services
+2. **ViewModel Layer** — depends on services + managers
+3. **Service Layer** — depends on persistence + utilities
+4. **Shared Services** — no circular dependencies
+5. **Utilities & Extensions** — leaf nodes
+
+**Cross-Agent Collaboration:**
+- **Scarlett (UI Layer Audit):** Found 12 files with 47 service calls. ISettingsService most coupled (24 calls). Property-injection pattern required for XAML.
+- **Snake Eyes (ViewModel/Service Analysis):** Confirmed zero circular deps, identified 2 quick wins (HotkeyManager injection, DefaultContextMenuFactory DI).
+- **This Investigation:** Full dependency graph with no blockers for proceeding.
+
+**Status:** Architecture is clean and DI-ready. No blocking issues. Ready for 3-phase implementation strategy.

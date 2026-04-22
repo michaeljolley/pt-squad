@@ -8,6 +8,56 @@
 
 ## Learnings
 
+### DI Dependency Analysis (2025-01-28)
+
+**Task:** Analyzed ViewModel and Service layer constructor dependencies to prepare for replacing `App.Current.Services` service locator with proper constructor injection.
+
+**Key Findings:**
+1. **Service Locator Usage (Minimal):**
+   - `TopLevelCommandManager` uses `IServiceProvider` to enumerate all `ICommandProvider` instances (legitimate plugin enumeration pattern)
+   - `TopLevelViewModel.Hotkey` setter uses `IServiceProvider.GetService<HotkeyManager>()` (can be refactored to constructor injection)
+   
+2. **No Circular Dependencies:** Analyzed 15 ViewModels and 11 services - all dependencies flow in one direction
+   
+3. **Critical Dependency Chains:**
+   - `ShellViewModel` → `IRootPageService`, `IPageViewModelFactoryService`, `IAppHostService`, `TaskScheduler`
+   - `TopLevelCommandManager` → `IServiceProvider` (for plugin enumeration), `ICommandProviderCache`
+   - `SettingsViewModel` → `TopLevelCommandManager`, `ISettingsService`, `IThemeService`, `TaskScheduler`
+   - `DockViewModel` → `TopLevelCommandManager`, `ISettingsService`, `IContextMenuFactory`, `TaskScheduler`
+   
+4. **Service Layer Clean:** All services have simple dependency chains:
+   - `AppStateService` → `IPersistenceService`, `IApplicationInfoService`
+   - `SettingsService` → `IPersistenceService`, `IApplicationInfoService`
+   - `PersistenceService` → (no dependencies)
+   - `ApplicationInfoService` → (no dependencies)
+   
+5. **Factory Patterns:**
+   - `IPageViewModelFactoryService` (impl: `CommandPalettePageViewModelFactory`) - creates ViewModels dynamically, already DI-friendly
+   - `IContextMenuFactory` (impl: `DefaultContextMenuFactory`) - uses static singleton pattern (`Instance`) - should migrate to DI singleton
+   
+6. **Recommendations:**
+   - **Quick Win:** Inject `HotkeyManager` into `TopLevelViewModel` constructor, remove `IServiceProvider` usage in property setter
+   - **Quick Win:** Replace `DefaultContextMenuFactory.Instance` with DI-registered singleton
+   - **Keep:** `TopLevelCommandManager`'s use of `IServiceProvider` for plugin enumeration (legitimate pattern)
+   - **Phase 2:** Register all services as singletons in DI container
+   - **Phase 3:** Audit UI layer (.xaml.cs files) for `App.Current.Services` usage (12 files found)
+
+**Constructor Patterns Observed:**
+- ViewModels typically depend on: `TaskScheduler`, services (ISettingsService, IThemeService), other ViewModels/managers
+- Services typically depend on: other services (IPersistenceService, IApplicationInfoService), no ViewModels
+- Clean separation between ViewModel layer and Service layer
+- No ViewModel-to-Service-to-ViewModel circular dependencies
+
+**Missing Pieces (Need Investigation):**
+- `IThemeService` implementation not found in Services/ directory
+- `IRootPageService` implementation not found
+- `IExtensionService` implementation not found
+- `IAppHostService` not found
+
+**Detailed Report:** `C:\sources\PowerToys\.squad\agents\snake-eyes\di-dependency-analysis.md`
+
+---
+
 ### Extension System Architecture (2026-04-20 Review)
 
 **Core Extension SDK (WinRT IDL Contracts)**
@@ -164,3 +214,40 @@ Location: `src/modules/cmdpal/Microsoft.CmdPal.UI.ViewModels/TopLevelCommandMana
 - Sample Extensions: `src/modules/cmdpal/ext/SamplePagesExtension`, `src/modules/cmdpal/ext/ProcessMonitorExtension`
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+### ViewModel/Service DI Analysis Summary (2026-04-22)
+
+**Task:** Analyze constructor dependencies across 15 ViewModels and 11 services to identify service locator usage and DI migration opportunities.
+
+**Key Findings:**
+- ✅ **Zero circular dependencies** — all dependency chains are acyclic
+- ✅ **Minimal service locator usage** — only 2 classes use IServiceProvider:
+  1. TopLevelCommandManager — legitimate for plugin enumeration (keep as-is)
+  2. TopLevelViewModel — Hotkey property uses GetService<HotkeyManager>() (refactorable)
+
+**Dependency Patterns:**
+- **ViewModels:** Depend on TaskScheduler, services (ISettingsService, IThemeService), other ViewModels/managers
+- **Services:** Depend on other services (IPersistenceService, IApplicationInfoService), never on ViewModels
+- **Clean separation:** No ViewModel-to-Service-to-ViewModel circular dependencies
+- **Factory patterns:** IPageViewModelFactoryService (DI-friendly), DefaultContextMenuFactory (static singleton, needs DI migration)
+
+**Quick Wins Identified:**
+
+1. **Inject HotkeyManager into TopLevelViewModel**
+   - Eliminates: _serviceProvider.GetService<HotkeyManager>() in Hotkey property setter
+   - Change: Add HotkeyManager hotkeyManager constructor parameter
+   - Risk: Low, straightforward refactoring
+   - Impact: Improves testability, removes one service locator call
+
+2. **Register DefaultContextMenuFactory as DI Singleton**
+   - Current: Uses static Instance property accessed throughout codebase
+   - Proposed: Register as IContextMenuFactory in DI container, inject via constructor
+   - Risk: Low, affects multiple ViewModels but dependencies are clean
+   - Impact: Enables factory testing, removes static singleton pattern
+
+**Service Layer Assessment:**
+- AppStateService, SettingsService, PersistenceService, ApplicationInfoService have simple, clean dependency chains
+- All services are ready for DI container registration
+- No migration blockers
+
+**Status:** Service and ViewModel layers are clean and ready for full DI migration. Quick wins can be implemented immediately. No architectural blockers identified.

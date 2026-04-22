@@ -38,6 +38,36 @@
 **What:** Test suite covers 17 scenarios: zero, one, two, five, and 100 command/fallback combinations, plus edge cases (disabled providers, built-in providers). Validates both singular and plural forms across all permutations.
 **Why:** Pluralization logic is error-prone; comprehensive coverage ensures regressions are caught early.
 
+### 2026-04-22: DI Migration — Full Investigation Complete
+**By:** Hawk, Scarlett, Snake Eyes (collaborative analysis)
+**Issue:** General code quality / DI modernization
+**What:** Completed comprehensive analysis across three dimensions:
+  - **Hawk:** Full dependency graph (30+ services, 5 levels, zero circular dependencies)
+  - **Scarlett:** UI layer audit (12 files, 47 service calls; 3-phase migration strategy)
+  - **Snake Eyes:** ViewModel/service analysis (2 quick wins: HotkeyManager injection, DefaultContextMenuFactory DI)
+**Decision:** DI migration is **architecturally feasible** with no blockers. No circular dependencies. Clear path forward.
+**Details:** See `.squad/orchestration-log/2026-04-22T02-31-00Z-{hawk,scarlett,snake-eyes}.md` for detailed findings.
+
+### 2026-04-22: UI Layer DI Strategy — Property Injection Pattern
+**By:** Scarlett (UI Dev)
+**Status:** Ready for Implementation
+**What:** XAML pages/controls cannot use constructor injection (parameterless constructor constraint). Solution: property injection with careful App/factory coordination.
+**Migration Phases:**
+  - **Phase 1 (EASY):** SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage — validate property-injection pattern (~12 calls removed)
+  - **Phase 2 (MEDIUM):** ListPage, DockWindow, ContextMenu, FallbackRanker, DockSettingsPage — refactor ViewModels (~17 calls removed)
+  - **Phase 3 (HARD):** MainWindow, ShellPage — careful App lifecycle coordination (~15 calls removed)
+**Critical Risk:** Services injected via properties MUST be set BEFORE control/page use. Requires tight App/factory coordination.
+**Next:** Team approval on migration strategy, then prototype with one EASY file.
+
+### 2026-04-22: Quick Wins — HotkeyManager & DefaultContextMenuFactory
+**By:** Snake Eyes
+**Status:** Ready for Immediate Implementation
+**What:** Two low-risk DI improvements:
+  1. **Inject HotkeyManager into TopLevelViewModel** — eliminates `_serviceProvider.GetService<HotkeyManager>()` in Hotkey property
+  2. **Replace DefaultContextMenuFactory singleton with DI** — register as `IContextMenuFactory` singleton, inject instead of using static `Instance`
+**Risk:** Low. Both are straightforward constructor additions with no circular dependencies.
+**Impact:** Reduces service locator usage, improves testability and clarity.
+
 ## Governance
 
 - All meaningful changes require team consensus

@@ -163,6 +163,60 @@
 6. **Extension integration** — Clean wrapper pattern for extension objects with background thread safety
 7. **Async/cancellation support** — Navigation supports CancellationToken, proper async patterns
 
+### Service Locator Anti-Pattern (2026-04-21)
+
+**Context:** Michael requested audit of all `App.Current.Services` usage in UI layer to enable migration to constructor injection.
+
+**Files with Service Locator (12 total):**
+- `MainWindow.xaml.cs` (9 calls) — Root window; ISettingsService, IThemeService, TrayIconService, IExtensionService, MainWindowViewModel
+- `ShellPage.xaml.cs` (6 calls) — Main content page; ShellViewModel, ISettingsService, TopLevelCommandManager
+- `ListPage.xaml.cs` (2 calls) — Extension list view; ISettingsService (event handlers)
+- `DockWindow.xaml.cs` (1 call, multi-resolution) — Dock window; ISettingsService, DockViewModel, IThemeService
+- `ContextMenu.xaml.cs` (1 call) — Context menu control; IFuzzyMatcherProvider (for ViewModel)
+- `FallbackRanker.xaml.cs` (3 calls) — Settings control; TopLevelCommandManager, IThemeService, ISettingsService (for ViewModel)
+- `SearchBar.xaml.cs` (1 call) — Search control; ISettingsService (property getter)
+- `AppearancePage.xaml.cs` (3 calls) — Settings page; IThemeService, TopLevelCommandManager, ISettingsService (for ViewModel)
+- `DockSettingsPage.xaml.cs` (8 calls) — Settings page; IThemeService, TopLevelCommandManager, ISettingsService, DockViewModel
+- `ExtensionsPage.xaml.cs` (3 calls) — Settings page; TopLevelCommandManager, IThemeService, ISettingsService (for ViewModel)
+- `GeneralPage.xaml.cs` (4 calls) — Settings page; TopLevelCommandManager, IThemeService, ISettingsService, IApplicationInfoService
+- `InternalPage.xaml.cs` (1 call) — Settings page; IApplicationInfoService
+
+**Service Usage Frequency:**
+- `ISettingsService` — 24 calls across 10 files (most frequently resolved)
+- `TopLevelCommandManager` — 9 calls across 7 files
+- `IThemeService` — 7 calls across 7 files
+- ViewModels (MainWindowViewModel, ShellViewModel, DockViewModel) — 5 calls
+- `TrayIconService` — 3 calls (MainWindow only)
+- `IApplicationInfoService` — 2 calls
+- `IFuzzyMatcherProvider`, `IExtensionService` — 1 call each
+
+**Patterns Discovered:**
+1. **Caching Service Provider** — `MainWindow.xaml.cs:904`, `DockWindow.xaml.cs:75` store `App.Current.Services` in local variable
+2. **Event Handler Resolutions** — 5 occurrences where services resolved inside frequently-called event handlers (mouse clicks, message handlers)
+3. **Property Getter Resolutions** — `ShellPage.DefaultPageAnimation` and `SearchBar.Settings` properties resolve services on every access
+4. **Transitive Resolutions** — 6 files resolve services only to pass to ViewModel constructors (ContextMenu, FallbackRanker, settings pages)
+
+**XAML Instantiation Challenge:**
+All pages, controls, and windows are XAML-instantiated via parameterless constructors. WinUI framework creates these via XAML parser, preventing traditional constructor injection. Migration requires:
+1. Property injection pattern (set after construction via App or factory)
+2. Factory pattern for code-created types (DockWindow)
+3. ViewModel-based DI (inject ViewModel instead of creating in code-behind)
+4. Navigation parameter-based injection (pass services via Frame.Navigate parameter)
+
+**Migration Difficulty Ratings:**
+- **HARD (2 files):** MainWindow, ShellPage — Complex lifecycle, multiple services, event subscriptions, framework-managed
+- **MEDIUM (4 files):** ListPage, DockWindow, ContextMenu, FallbackRanker, DockSettingsPage — Event handlers or code-created with call site dependencies
+- **EASY (6 files):** SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage — Single service or ViewModel-only usage
+
+**Recommended Migration Strategy:**
+- **Phase 1 (Quick Wins):** SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage — Property-inject services or ViewModels
+- **Phase 2 (ViewModel Refactoring):** ContextMenu, FallbackRanker, DockWindow, ListPage, DockSettingsPage — Inject ViewModels externally, move queries to ViewModels
+- **Phase 3 (Core Infrastructure):** MainWindow, ShellPage — Property-inject core services, careful coordination with App lifecycle
+
+**Key Risk:** XAML instantiation timing. Services injected via properties must be set BEFORE the control/page is used. Requires coordination between App/Factory and XAML creation to avoid `NullReferenceException`.
+
+**Detailed Audit:** See `~/.copilot/session-state/service-locator-audit.md` for full per-file breakdown with line numbers and migration recommendations.
+
 ### Concerns & Improvement Opportunities
 
 1. **Accessibility Coverage** — AutomationProperties are sparse; many controls lack Names/Descriptions for screen readers
@@ -215,3 +269,33 @@ CompositeFormat format = (commandSingular, fallbackSingular) switch
 ```
 
 **Decision:** CmdPal does not use a pluralization library or framework. Each pluralization case requires explicit resource strings and conditional logic. This ensures full control over localization and avoids runtime dependencies.
+
+### UI Layer DI Audit Summary (2026-04-22)
+
+**Task:** Comprehensive audit of `App.Current.Services` usage across the entire UI layer to identify service locator calls and migration strategy.
+
+**Audit Results:**
+- **12 files** using `App.Current.Services` to resolve services
+- **47 service resolution calls** identified
+- **ISettingsService** most heavily coupled (24 calls across 10 files)
+- **TopLevelCommandManager** second most common (9 calls across 7 files)
+
+**Anti-Patterns Found:**
+1. **Caching Service Provider** — 2 files store `App.Current.Services` in local variable
+2. **Event Handler Resolutions** — 5 occurrences resolve services in frequently-called event handlers
+3. **Property Getter Resolutions** — 2 occurrences resolve services on every property access
+4. **Transitive Resolutions** — 6 files resolve services only to pass to ViewModels
+
+**Difficulty Classification:**
+- **EASY (6 files):** SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage + 1 more
+- **MEDIUM (5 files):** ListPage, DockWindow, ContextMenu, FallbackRanker, DockSettingsPage
+- **HARD (2 files):** MainWindow, ShellPage (complex lifecycle, framework-managed constructors)
+
+**Critical Challenge:** XAML pages/controls instantiated via parameterless constructors by framework. Cannot use traditional constructor injection. Solution: property injection with careful App/factory coordination.
+
+**Three-Phase Migration Strategy:**
+1. **Phase 1 (EASY):** Property-inject services/ViewModels into 6 files (~12 calls removed)
+2. **Phase 2 (MEDIUM):** Refactor ViewModels, inject externally into 5 files (~17 calls removed)
+3. **Phase 3 (HARD):** Property-inject core services with careful App lifecycle coordination (~15 calls removed)
+
+**Risk Mitigation:** Services set via properties MUST be available BEFORE control/page usage. Requires tight coordination between App and factories. Recommend prototyping Phase 1 first to validate pattern.
