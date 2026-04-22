@@ -299,3 +299,15 @@ CompositeFormat format = (commandSingular, fallbackSingular) switch
 3. **Phase 3 (HARD):** Property-inject core services with careful App lifecycle coordination (~15 calls removed)
 
 **Risk Mitigation:** Services set via properties MUST be available BEFORE control/page usage. Requires tight coordination between App and factories. Recommend prototyping Phase 1 first to validate pattern.
+
+### PR #47140 Review Feedback — Overflow Tag Optimization
+
+**Problem:** The "+N" overflow tag badge for list items was implemented as a separate `Border` element in the XAML visual tree. This element existed in every list item's tree even when collapsed (no overflow), which is a perf concern for large lists.
+
+**Solution:** Replaced the `Border` with a synthetic `TagViewModel` appended to the `VisibleTags` collection. When tag count exceeds `MaxVisibleTags` (3), a `TagViewModel` backed by a Toolkit `Tag("+N")` is created with a tooltip and added to the list. The existing `ItemsRepeater` + `TagTemplate` renders it — zero new XAML elements needed.
+
+**Pattern:** Synthetic/sentinel view models are a good way to avoid adding conditional XAML elements to templates that are instantiated per-item. The cost shifts from per-item visual tree overhead to a lightweight VM allocation only when overflow occurs.
+
+**Files changed:**
+- `ListItemViewModel.cs` — Removed `OverflowTagCount`, `HasOverflowTags`, `OverflowTagText` properties; updated `UpdateVisibleTags()` to append synthetic tag VM
+- `ListPage.xaml` — Replaced `StackPanel` + `Border` wrapper with direct `ItemsRepeater` (removed wrapper element)

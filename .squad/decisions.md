@@ -68,6 +68,28 @@
 **Risk:** Low. Both are straightforward constructor additions with no circular dependencies.
 **Impact:** Reduces service locator usage, improves testability and clarity.
 
+### 2026-04-21: Tag overflow fix approach for #38317
+**By:** Michael Jolley (via Copilot)
+**What:** Two-pronged fix for Command Palette list item tag overflow:
+  1. Prioritize title text — title always gets layout priority, tags get remaining space. Handle overflow with ellipsis appropriately.
+  2. Cap visible tags at 3 — if more than 3 tags, show only 3 and append a `[+ N]` badge indicating how many more exist.
+**Why:** User design decision for issue #38317 — ensures title is always readable while keeping tags useful.
+
+### 2026-04-21: Build instructions for CmdPal
+**By:** Michael Jolley (via Copilot)
+**What:** Build CmdPal by targeting the `Microsoft.CmdPal.UI` project in `src/modules/cmdpal/CommandPalette.slnf`.
+**Why:** User directive — correct build procedure for Command Palette work.
+
+### 2026-04-22: Use Synthetic TagViewModels for Overflow Badges
+**By:** Scarlett (UI Dev)
+**Issue:** #47140
+**What:** Replace the `Border` overflow badge with a synthetic `TagViewModel` appended to `VisibleTags`. The overflow "+N" indicator is now rendered by the same `ItemsRepeater` + `TagTemplate` pipeline as regular tags.
+**Why:** Addresses niels9001's perf review feedback — eliminates one `Border` + `TextBlock` from every list item's visual tree, while removing 3 properties (`OverflowTagCount`, `HasOverflowTags`, `OverflowTagText`) and their change notifications.
+**Impact:**
+  - Perf: Eliminates visual tree bloat
+  - Simplicity: Fewer properties, cleaner VM logic
+  - Pattern: Establishes "synthetic VM sentinel" as preferred approach for conditional badges in repeated templates
+
 ## Governance
 
 - All meaningful changes require team consensus
