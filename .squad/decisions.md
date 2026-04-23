@@ -130,6 +130,24 @@
 **Impact:** Safety net established for Phase 0b code changes. Ready for Snake Eyes to proceed with HotkeyManager/AliasManager injection, DefaultContextMenuFactory DI conversion, TaskScheduler parameter injection.
 **Files:** TopLevelCommandManagerTests.cs, HotkeyManagerTests.cs, DefaultContextMenuFactoryTests.cs
 
+### 2026-04-23: Phase 0b DI Quick Wins — COMPLETE
+**By:** Snake Eyes (Extensions Dev) with Coordinator (fix) support
+**Status:** ✅ COMPLETE
+**What:** Successfully eliminated `IServiceProvider` from entire ViewModel layer. Implemented DI for all Phase 0 quick wins:
+   1. **Injected HotkeyManager and AliasManager into TopLevelViewModel** — removed service locator calls in Hotkey property and AliasText setter
+   2. **Converted DefaultContextMenuFactory to DI-based singleton** — now registered as `IContextMenuFactory`, injected instead of static
+   3. **Refactored TopLevelCommandManager** — constructor now accepts 8 specific dependencies instead of `IServiceProvider`
+   4. **Refactored CommandProviderWrapper** — methods now accept specific services instead of using service locator
+**Technical Decision — Lazy<T> for Circular Dependencies:** TopLevelCommandManager needed HotkeyManager and AliasManager, but both depend on TopLevelCommandManager. Solution: inject `Lazy<HotkeyManager>` and `Lazy<AliasManager>` to defer resolution until first use. Verified zero runtime circular dependency issues.
+**Verification:**
+   - ✅ All 76 tests passing (25 baseline from Phase 0a + 51 updated/existing)
+   - ✅ ViewModels project builds cleanly
+   - ✅ Zero circular dependencies confirmed
+   - ✅ Zero IServiceProvider references in ViewModel layer
+**Files Changed:** 7 (4 production + 3 test)
+**Impact:** Service locator calls eliminated (~10), improved testability and DI clarity
+**Next:** Phase 1 ready to start — UI Layer Quick Wins (SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage)
+
 ## Governance
 
 - All meaningful changes require team consensus

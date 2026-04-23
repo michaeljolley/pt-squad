@@ -45,3 +45,56 @@ This section contains historical learnings, architecture reviews, and analysis f
 
 ---
 
+## 2026-04-23: Phase 0a Baseline Tests Complete (Flint)
+
+**Status:** ✅ COMPLETE  
+**Update by Scribe:** Baseline safety net established.
+
+Flint completed 25 unit tests for Phase 0 critical classes:
+- **TopLevelCommandManagerTests:** 12 tests ✅
+- **HotkeyManagerTests:** 7 tests ✅
+- **DefaultContextMenuFactoryTests:** 6 tests ✅
+
+All tests passing. Ready for Snake Eyes Phase 0b implementation.
+
+**Key Finding:** `GetService<TaskScheduler>()!` null-forgiving operator is compile-time only. At runtime, constructor may store null if unregistered. Phase 0b must ensure TaskScheduler is always registered.
+
+---
+
+## 2026-04-23: Phase 0b DI Quick Wins Complete (Snake Eyes + Coordinator)
+
+**Status:** ✅ COMPLETE  
+**Update by Scribe:** ViewModel layer now 100% free of IServiceProvider.
+
+Snake Eyes successfully eliminated `IServiceProvider` from entire ViewModel layer with support from Coordinator (fix) to resolve circular dependency.
+
+### What Changed
+1. **TopLevelViewModel:** HotkeyManager and AliasManager now injected (removed service locator calls from Hotkey property and AliasText setter)
+2. **DefaultContextMenuFactory:** Converted from static instance to DI-based singleton, registered as `IContextMenuFactory`
+3. **TopLevelCommandManager:** Constructor refactored to accept 8 specific dependencies instead of `IServiceProvider`
+4. **CommandProviderWrapper:** Methods refactored to accept specific services
+
+### Critical Fix: Lazy<T> for Circular Dependencies
+- **Problem:** TopLevelCommandManager needs HotkeyManager and AliasManager, but both depend on TopLevelCommandManager
+- **Solution:** Inject `Lazy<HotkeyManager>` and `Lazy<AliasManager>` to defer resolution until first use
+- **Outcome:** Zero runtime circular dependency issues, verified by all tests passing
+
+### Test Results
+- ✅ 76 tests passing (25 baseline Phase 0a + 51 updated/existing Phase 0b)
+- ✅ ViewModels project builds cleanly
+- ✅ Zero circular dependencies confirmed
+- ✅ All IServiceProvider references removed from ViewModel layer
+
+### Files Changed
+**Production:** TopLevelCommandManager.cs, TopLevelViewModel.cs, CommandProviderWrapper.cs, App.xaml.cs (4 files)
+**Tests:** TopLevelCommandManagerTests.cs, HotkeyManagerTests.cs, DefaultContextMenuFactoryTests.cs (3 files)
+
+### Impact
+- Service locator calls eliminated: ~10
+- Improved testability and DI clarity
+- Phase 1 UI Layer Quick Wins ready to begin
+
+**NOTE FOR PHASE 1:** Phase 0b Lazy<T> pattern may be useful reference for UI layer property injection strategy. Coordinator's circular dependency resolution technique is proven.
+
+---
+

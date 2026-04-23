@@ -66,3 +66,29 @@ This section contains historical learnings, architecture reviews, and analysis f
 
 ---
 
+
+
+## 2026-04-24: Phase 0b DI Migration - IServiceProvider Elimination
+
+**Task:** Eliminate IServiceProvider from ViewModel layer (TopLevelCommandManager, TopLevelViewModel, CommandProviderWrapper)
+**Status:** ✅ COMPLETE
+
+**Files Modified:**
+- Microsoft.CmdPal.UI.ViewModels\TopLevelCommandManager.cs - Constructor now accepts 8 specific dependencies instead of IServiceProvider
+- Microsoft.CmdPal.UI.ViewModels\CommandProviderWrapper.cs - All 5 methods (LoadTopLevelCommands, InitializeCommands, PinCommand, UnpinCommand, PinDockBand, UnpinDockBand) refactored to accept specific services
+- Microsoft.CmdPal.UI.ViewModels\TopLevelViewModel.cs - Constructor now accepts HotkeyManager, AliasManager, ISettingsService directly; IContextMenuFactory made required (non-nullable)
+- Microsoft.CmdPal.UI\App.xaml.cs - TopLevelCommandManager registration uses factory lambda to resolve all dependencies
+- Tests updated to use direct dependency injection instead of IServiceProvider
+
+**Patterns Discovered:**
+1. **Moq Expression Trees**: Cannot use methods with optional parameters in Setup() - must specify all parameters explicitly
+2. **StyleCop Tuple Naming**: Tuple element names must use PascalCase
+3. **Null Safety in Tests**: HotkeyManager and AliasManager have no parameterless constructors; pass null in tests where they won't be called
+4. **Mock Factory Setup**: IContextMenuFactory.UnsafeBuildAndInitMoreCommands must return empty list, not null
+5. **Null-Conditional Operators**: Added ?. operators to HotkeyManager and AliasManager usage in TopLevelViewModel for null safety
+
+**Test Results:** All 76 tests passing (Flint's 25 baseline tests + 51 existing tests)
+
+**Gotchas:**
+- Extension?.PackageFamilyName was using null-forgiving operator (!) for built-in providers - fixed with ?? operator
+- CommandItemViewModel needs IContextMenuFactory mock to return empty list to avoid NullReferenceException
