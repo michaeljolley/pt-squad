@@ -45,3 +45,24 @@ This section contains historical learnings, architecture reviews, and analysis f
 
 ---
 
+## 2026-04-23: Phase 0a Baseline Tests Complete — Ready for Phase 0b
+
+**Date:** 2026-04-23
+**Agent:** Flint (Tester)
+**Status:** ✅ COMPLETE
+
+**What:** Wrote 25 baseline unit tests for 3 critical classes before DI migration code changes.
+- **TopLevelCommandManagerTests.cs** (12 tests): Constructor injection, TaskScheduler resolution, LoadBuiltinsAsync with 0/1/2 providers, Dispose
+- **HotkeyManagerTests.cs** (7 tests): Constructor, UpdateHotkey add/remove/replace/conflict scenarios
+- **DefaultContextMenuFactoryTests.cs** (6 tests): Singleton pattern, IContextMenuFactory implementation, null/empty handling
+
+**Key Finding:** The `!` null-forgiving operator on `GetService<TaskScheduler>()!` is compile-time only. At runtime, the constructor does NOT throw if TaskScheduler is unregistered — it silently stores null. **Phase 0b must ensure TaskScheduler is always registered in the service provider.**
+
+**Impact for Your Phase 0b PR:**
+- These tests form the safety net for your code changes
+- If constructor signatures change or service resolution breaks, tests catch it immediately
+- TaskScheduler must be registered in App.xaml.cs before TopLevelCommandManager is instantiated
+- Test files available at: `src/modules/cmdpal/Tests/Microsoft.CmdPal.UI.ViewModels.UnitTests/`
+
+---
+

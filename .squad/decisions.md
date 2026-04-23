@@ -107,18 +107,28 @@
 7. **All 4 team members approved the plan** — Hawk (architecture), Scarlett (UI feasibility), Snake Eyes (ViewModel/service layer), Flint (testing strategy)
 
 **Implementation Conditions:**
-- Phase 0: Tests 1.0–1.3 written and passing before code changes
+- Phase 0: Tests 1.0–1.3 written and passing before code changes ✅ COMPLETE (Flint Phase 0a)
 - Phase 1: Move DockSettingsPage to Phase 2; file list validated (5 genuine quick wins)
 - Phase 2: IPageFactory and SettingsPageBase patterns proven
 - Phase 3: Hawk code review required before merge; ShellPage prototype required
 
 **Next Steps:**
 - Snake Eyes: Prepare Phase 0 PR (HotkeyManager, AliasManager, DefaultContextMenuFactory, TaskScheduler)
-- Flint: Implement Phase 0 tests before code changes
 - Scarlett: Design IPageFactory with SettingsWindow integration; prototype SettingsPageBase with AppearancePage
 - Hawk: Schedule Phase 3 code review
 
 **Risk Level:** LOW-MEDIUM | **Confidence:** HIGH | **Blockers:** None
+
+### 2026-04-23: Phase 0a Baseline Test Coverage — COMPLETE
+**By:** Flint (Tester)
+**Status:** ✅ COMPLETE
+**What:** Wrote 25 baseline unit tests for Phase 0 critical classes before code changes.
+  - **TopLevelCommandManagerTests:** 12 tests (constructor, TaskScheduler resolution, LoadBuiltinsAsync 0/1/2 providers, Dispose)
+  - **HotkeyManagerTests:** 7 tests (constructor, UpdateHotkey add/remove/replace/conflict)
+  - **DefaultContextMenuFactoryTests:** 6 tests (singleton pattern, IContextMenuFactory, null/empty items, no-op)
+**Key Finding:** The `!` null-forgiving operator on `GetService<TaskScheduler>()!` is compile-time only. At runtime, constructor silently stores null if TaskScheduler is unregistered. Phase 0b must ensure TaskScheduler is always registered.
+**Impact:** Safety net established for Phase 0b code changes. Ready for Snake Eyes to proceed with HotkeyManager/AliasManager injection, DefaultContextMenuFactory DI conversion, TaskScheduler parameter injection.
+**Files:** TopLevelCommandManagerTests.cs, HotkeyManagerTests.cs, DefaultContextMenuFactoryTests.cs
 
 ## Governance
 

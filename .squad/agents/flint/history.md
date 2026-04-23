@@ -45,3 +45,21 @@ This section contains historical learnings, architecture reviews, and analysis f
 
 ---
 
+## Learnings
+
+### Test Infrastructure (ViewModels)
+- **Test project:** `src/modules/cmdpal/Tests/Microsoft.CmdPal.UI.ViewModels.UnitTests/`
+- **Build:** `tools\build\build.cmd` from the test project dir. Must nuke `obj\x64` to defeat incremental no-op on new files.
+- **Run:** `vstest.console.exe` against `<project>\x64\Debug\WinUI3Apps\CmdPal\tests\*.dll` (not the solution-level `x64\Debug` path — that may be stale).
+- **Patterns:** `[TestClass]` + `[TestMethod]`, `partial class` required when inner types extend WinRT base classes (e.g., `CommandProvider`). Existing tests use `TaskScheduler.Default`, `CommandProviderContext.Empty`, `DefaultContextMenuFactory.Instance` as lightweight stubs.
+- **Moq:** Available via `<PackageReference Include="Moq" />`. Used for `ISettingsService`, `ICommandProviderCache`. Capture lambda transforms via `Callback<Func<SettingsModel, SettingsModel>, bool>(...)` pattern.
+- **DI in tests:** Use `ServiceCollection` + `BuildServiceProvider()` to create real `IServiceProvider` with registered singletons. This mirrors production DI wiring.
+- **WinRT base classes:** `CommandProvider` from `Microsoft.CommandPalette.Extensions.Toolkit` can be extended in tests as `TestCommandProvider` with empty `TopLevelCommands()`.
+- **Null-forgiving `!`:** The `!` operator on `GetService<TaskScheduler>()!` is compile-time only. At runtime, the constructor silently stores null — no `NullReferenceException` thrown.
+- **`LoadBuiltinsAsync` dependencies:** Needs both `TaskScheduler` and `ISettingsService` registered in the service provider. The `CommandProviderWrapper` constructor reads `Id`, `DisplayName`, `Icon`, `Settings`, hooks `ItemsChanged`, and calls `InitializeWithHost`.
+
+### Files Created
+- `TopLevelCommandManagerTests.cs` — 12 tests: constructor injection, initial state, dispose, LoadBuiltinsAsync with 0/1/2 providers
+- `HotkeyManagerTests.cs` — 7 tests: constructor, UpdateHotkey with add/remove/replace/conflict
+- `DefaultContextMenuFactoryTests.cs` — 6 tests: singleton instance, IContextMenuFactory, null/empty items, no-op method
+
