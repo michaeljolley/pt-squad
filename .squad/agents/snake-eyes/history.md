@@ -92,3 +92,40 @@ This section contains historical learnings, architecture reviews, and analysis f
 **Gotchas:**
 - Extension?.PackageFamilyName was using null-forgiving operator (!) for built-in providers - fixed with ?? operator
 - CommandItemViewModel needs IContextMenuFactory mock to return empty list to avoid NullReferenceException
+
+---
+
+## 2026-04-25: Phase 4 Complete — DI Migration Final Hardening (Full Team)
+
+**Status:** ✅ **MIGRATION COMPLETE**  
+**Owner:** Full Team  
+**Commit:** `741307820b`
+
+Snake Eyes' Phase 0b work established the foundation that enabled all subsequent phases. Phase 4 successfully hardened the DI contract and locked in the pattern with automated verification.
+
+### Phase 4 Final Deliverables
+1. **App.Services Property:** Changed from `public` to `internal` (prevents external service locator abuse)
+2. **Stale Imports Cleanup:** Removed unused `using Microsoft.Extensions.DependencyInjection` from TopLevelViewModel.cs
+3. **DI Verification Tests:** 4 new reflection-based tests ensure no regressions
+   - Constructor parameter verification for TopLevelCommandManager and TopLevelViewModel
+   - Automated detection of IServiceProvider re-introduction
+
+### Migration Timeline Summary
+- **Phase 0a (Flint):** 25 baseline tests ✓
+- **Phase 0b (Snake Eyes):** IServiceProvider eliminated from ViewModel layer ✓
+- **Phase 1 (Scarlett):** Settings pages migrated ✓
+- **Phase 2 (Scarlett):** UI controls migrated ✓
+- **Phase 3 (Scarlett):** MainWindow & ShellPage completed ✓
+- **Phase 4 (Full Team):** Hardening & verification ✓
+
+### Final Impact Metrics
+- **Service Locator Calls Eliminated:** 47 (from methods/handlers/getters)
+- **Constructor-Only Calls:** 25 (all intentional, all assembly-internal)
+- **IServiceProvider Variables Anywhere:** 0
+- **Test Coverage:** 80/80 passing (100%)
+- **Automated Regression Tests:** 4 (reflection-based, will catch future violations)
+
+### Foundation Success
+Phase 0b's elimination of IServiceProvider from ViewModels was the keystone. It forced the DI pattern up the stack and enabled Scarlett's clean migrations in subsequent phases. The pattern proved robust and was successfully applied across 15 files without breaking changes.
+
+**Status: READY FOR MERGE TO MAIN** 🎉

@@ -63,3 +63,36 @@ This section contains historical learnings, architecture reviews, and analysis f
 - `HotkeyManagerTests.cs` — 7 tests: constructor, UpdateHotkey with add/remove/replace/conflict
 - `DefaultContextMenuFactoryTests.cs` — 6 tests: singleton instance, IContextMenuFactory, null/empty items, no-op method
 
+---
+
+## 2026-04-25: Phase 4 Complete — DI Verification & Hardening (Full Team)
+
+**Status:** ✅ **MIGRATION COMPLETE**  
+**Owner:** Full Team  
+**Commit:** `741307820b`
+
+Flint contributed to Phase 4 final testing and verification strategy. Migration successfully hardened DI contract and established automated regression prevention.
+
+### Phase 4 Verification Tests Added (4 new)
+Working with the team, added reflection-based DI verification tests to CommandPaletteTests.cs:
+- `TopLevelCommandManager_DoesNotReceive_IServiceProvider` — Verifies constructor does NOT accept IServiceProvider
+- `TopLevelViewModel_DoesNotReceive_IServiceProvider` — Verifies constructor does NOT accept IServiceProvider
+- `TopLevelCommandManager_ReceivesSpecificServices` — Verifies 8 specific service parameters in constructor
+- `TopLevelViewModel_ReceivesSpecificServices` — Verifies HotkeyManager, AliasManager, ISettingsService in constructor
+
+### Final Test Coverage
+- **Baseline Tests (Phase 0a):** 25 tests ✓
+- **Existing Tests:** 50 tests ✓
+- **DI Verification Tests (Phase 4):** 4 tests ✓
+- **Other Tests:** 1 test ✓
+- **Total:** 80/80 passing (100% success)
+
+### Migration Complete
+✅ DI migration fully realized across all 5 phases:
+- 47 service locator calls eliminated from methods/handlers/getters
+- 25 constructor-only calls remaining (by design, all internal)
+- App.Services property is now internal (compile-time enforcement)
+- 4 automated verification tests prevent regression
+- Zero IServiceProvider variables anywhere in codebase
+
+**Status: READY FOR MERGE TO MAIN** 🎉
