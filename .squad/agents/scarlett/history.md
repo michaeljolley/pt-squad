@@ -252,3 +252,20 @@ Readonly fields must appear before non-readonly fields. Order:
 **Next:** Phase 2 ready (ListPage, DockSettingsPage, ContextMenu, FallbackRanker)
 
 ---
+
+## Phase 3 Session Completion Summary
+
+**Status:** ✅ COMPLETE | **Commit:** `b626292539` | **Owner:** Scarlett
+
+**Milestone:** All App.Current.Services calls are now **constructor-only** (25 total, 0 in methods/handlers/getters)
+
+**Delivered:**
+- MainWindow.xaml.cs: Added _settingsService, _trayIconService, _extensionService. Eliminated IServiceProvider from MainWindow_Closed. All 10 calls → cached fields.
+- ShellPage.xaml.cs: Added _settingsService, _topLevelCommandManager. ViewModel init moved to constructor for XAML safety. All 6 calls → cached fields.
+
+**Statistics:** 2 files, +30/-20 lines, 76/76 tests passing  
+**Impact:** Service locator fully eliminated from UI layer constructors/methods
+
+**Key Learning:** Constructor-injection pattern + cached fields provides clean separation; XAML binding initialization requires careful ordering in constructor (before InitializeComponent).
+
+**Outcome:** DI migration Phase 3 objective achieved. Zero service locator anti-pattern calls outside constructors.
