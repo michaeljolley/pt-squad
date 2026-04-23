@@ -90,8 +90,39 @@
   - Simplicity: Fewer properties, cleaner VM logic
   - Pattern: Establishes "synthetic VM sentinel" as preferred approach for conditional badges in repeated templates
 
+
+### 2026-04-23: DI Migration Design Review — APPROVED WITH CONDITIONS
+**By:** Hawk, Scarlett, Snake Eyes, Flint (unanimous)
+**Ceremony:** Design Review — 4-agent sign-off
+**Status:** ✅ APPROVED WITH CONDITIONS  
+**What:** Design review of DI migration plan Phases 0–3 with architecture, UI feasibility, ViewModel/service layer, and testing strategy validation.
+
+**Key Decisions:**
+1. **Dynamic extension providers do NOT use IServiceProvider** — IEnumerable<ICommandProvider> injection is safe for built-ins (no circular dependencies confirmed by Hawk)
+2. **DockSettingsPage moved from Phase 1 to Phase 2** — requires ViewModel refactoring patterns; not a true quick win
+3. **Prototype SettingsPageBase with AppearancePage first** — establishes pattern before scaling to other files
+4. **IPageFactory must support parameterized navigation** — required for ExtensionPage parameter passing
+5. **Inject both HotkeyManager AND AliasManager into TopLevelViewModel** — replaces service locator calls in Hotkey property and AliasText setter
+6. **Baseline tests required BEFORE Phase 0 code changes** — 3 critical classes (TopLevelCommandManager, HotkeyManager, DefaultContextMenuFactory) have zero test coverage; ~25–30 tests needed across all phases
+7. **All 4 team members approved the plan** — Hawk (architecture), Scarlett (UI feasibility), Snake Eyes (ViewModel/service layer), Flint (testing strategy)
+
+**Implementation Conditions:**
+- Phase 0: Tests 1.0–1.3 written and passing before code changes
+- Phase 1: Move DockSettingsPage to Phase 2; file list validated (5 genuine quick wins)
+- Phase 2: IPageFactory and SettingsPageBase patterns proven
+- Phase 3: Hawk code review required before merge; ShellPage prototype required
+
+**Next Steps:**
+- Snake Eyes: Prepare Phase 0 PR (HotkeyManager, AliasManager, DefaultContextMenuFactory, TaskScheduler)
+- Flint: Implement Phase 0 tests before code changes
+- Scarlett: Design IPageFactory with SettingsWindow integration; prototype SettingsPageBase with AppearancePage
+- Hawk: Schedule Phase 3 code review
+
+**Risk Level:** LOW-MEDIUM | **Confidence:** HIGH | **Blockers:** None
+
 ## Governance
 
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
+
