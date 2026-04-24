@@ -266,6 +266,18 @@ Successfully hardened DI contract and added automated regression prevention. **A
 
 **Status: READY FOR MERGE TO MAIN** 🎉
 
+---
+
+## 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+
+**Date:** 2026-04-26  
+**Session Topic:** Circular dependency elimination  
+**Status:** ✅ COMPLETE
+
+CommandPaletteContextMenuFactory now takes ICommandLookup. PinToCommand inner class no longer stores TLC. Circular dependency with TopLevelCommandManager fully broken. DI graph simplified with read-only command access pattern.
+
+---
+
 ### Impact
 - Service locator calls eliminated: ~12
 - All settings pages now use consistent SettingsPageBase pattern
@@ -335,3 +347,15 @@ Readonly fields must appear before non-readonly fields. Order:
 **Key Learning:** Constructor-injection pattern + cached fields provides clean separation; XAML binding initialization requires careful ordering in constructor (before InitializeComponent).
 
 **Outcome:** DI migration Phase 3 objective achieved. Zero service locator anti-pattern calls outside constructors.
+
+---
+
+## 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+
+**Date:** 2026-04-26  
+**Session Topic:** Circular dependency elimination  
+**Status:** ✅ COMPLETE
+
+CommandPaletteContextMenuFactory now takes ICommandLookup. PinToCommand inner class no longer stores TLC. Circular dependency with TopLevelCommandManager fully broken. DI graph simplified with read-only command access pattern.
+
+---

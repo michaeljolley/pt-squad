@@ -20,7 +20,15 @@ This section contains historical learnings, architecture reviews, and analysis f
 
 ---
 
-## 2026-04-23: DI Migration Design Review Ceremony
+## 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+
+**Date:** 2026-04-26  
+**Session Topic:** Circular dependency elimination  
+**Status:** ✅ COMPLETE
+
+CommandRegistry pattern extracted to break circular deps. ICommandLookup interface for read-only lookups. Zero Lazy<T> in ViewModels. 3 dependency cycles broken (TLC ↔ AliasManager, TLC ↔ ContextMenuFactory, others). 11 files modified, 80/80 tests passing.
+
+---## 2026-04-23: DI Migration Design Review Ceremony
 
 **Date:** 2026-04-23  
 **Verdict:** ✅ APPROVED WITH CONDITIONS (4/4 agents)  
@@ -42,6 +50,16 @@ This section contains historical learnings, architecture reviews, and analysis f
 - Phase 3: Hawk review + ShellPage prototype required
 
 **Next:** Snake Eyes (Phase 0 PR), Flint (tests), Scarlett (IPageFactory), Hawk (Phase 3 review)
+
+---
+
+## 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+
+**Date:** 2026-04-26  
+**Session Topic:** Circular dependency elimination  
+**Status:** ✅ COMPLETE
+
+CommandRegistry pattern extracted to break circular deps. ICommandLookup interface for read-only lookups. Zero Lazy<T> in ViewModels. 3 dependency cycles broken (TLC ↔ AliasManager, TLC ↔ ContextMenuFactory, others). 11 files modified, 80/80 tests passing.
 
 ---
 

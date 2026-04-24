@@ -148,6 +148,38 @@
 **Impact:** Service locator calls eliminated (~10), improved testability and DI clarity
 **Next:** Phase 1 ready to start — UI Layer Quick Wins (SearchBar, AppearancePage, ExtensionsPage, GeneralPage, InternalPage)
 
+### 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+**By:** Coordinator, Rubber Duck (review), Phase 1/3–4 agents  
+**Status:** ✅ COMPLETE  
+**What:** Coordinated removal of dead dependencies and CommandRegistry extraction to break 3 circular cycles centered on TopLevelCommandManager.
+
+**Implementation Phases:**
+1. **Rubber Duck Review:** Identified lock ordering inconsistency and PinToCommand dead dep as blockers; approved extraction approach with 4 design recommendations (narrow ICommandLookup, readonly collections)
+2. **Phase 1 (Dead Deps):** Removed unused TopLevelCommandManager from HotkeyManager and PinToCommand.PinCommand inner class. Changed Lazy<T> → direct injection in TopLevelCommandManager. 80/80 tests pass.
+3. **Phase 3–4 (CommandRegistry Extraction):** Created CommandRegistry.cs (centralized command storage) and ICommandLookup interface (read-only access). Rewired AliasManager and CommandPaletteContextMenuFactory to depend on ICommandLookup instead of TopLevelCommandManager. Updated DI setup in App.xaml.cs. 80/80 tests pass.
+
+**Circular Dependencies Broken:**
+- TopLevelCommandManager ↔ AliasManager (AliasManager now depends on ICommandLookup, not TLC)
+- TopLevelCommandManager ↔ CommandPaletteContextMenuFactory (now depends on ICommandLookup, not TLC)
+- Multiple service consumers ↔ TopLevelCommandManager (abstracted via ICommandLookup)
+
+**Key Decisions:**
+1. CommandRegistry centralizes command collection operations (pin/unpin, ID lookup)
+2. ICommandLookup provides narrow read-only interface (GetCommand, GetCommands only)
+3. AliasManager and ContextMenuFactory depend on ICommandLookup, breaking circular edges
+4. Lazy<T> removed post-extraction; clean direct injection pattern achieved
+5. 4 design recommendations implemented (lock ordering, narrow interface, readonly collections, dead dep fixes)
+
+**Verification:**
+- ✅ All 80 tests passing (Phase 0a baseline + updated tests)
+- ✅ Zero circular dependencies confirmed
+- ✅ CommandRegistry DI verified in DIVerificationTests
+- ✅ No breaking changes to public API
+
+**Files Changed:** 11 total (2 new abstractions, 9 refactored for ICommandLookup)
+**Impact:** Command access abstracted via interface; decouples consumers from TopLevelCommandManager implementation
+**Pattern Established:** Future services depending on commands should inject ICommandLookup, not TopLevelCommandManager
+
 ## Governance
 
 - All meaningful changes require team consensus

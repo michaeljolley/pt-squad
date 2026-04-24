@@ -129,3 +129,15 @@ Snake Eyes' Phase 0b work established the foundation that enabled all subsequent
 Phase 0b's elimination of IServiceProvider from ViewModels was the keystone. It forced the DI pattern up the stack and enabled Scarlett's clean migrations in subsequent phases. The pattern proved robust and was successfully applied across 15 files without breaking changes.
 
 **Status: READY FOR MERGE TO MAIN** 🎉
+
+---
+
+## 2026-04-26: CommandRegistry Extraction & Circular Dependency Elimination
+
+**Date:** 2026-04-26  
+**Session Topic:** Circular dependency elimination  
+**Status:** ✅ COMPLETE
+
+AliasManager now takes ICommandLookup not TopLevelCommandManager. HotkeyManager no longer depends on TLC at all. 3 circular dependency cycles broken. DI graph cleaner, interface-based command access established.
+
+---
